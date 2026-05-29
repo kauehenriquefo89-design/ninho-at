@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Ninho — Controle de AT</title>
-<meta name="description" content="Sistema de controle de AT - Espaço Ninho"/>
+<title>Ninho — Acompanhamento Terapêutico</title>
+<meta name="description" content="Sistema de Acompanhamento Terapêutico - Espaço Ninho"/>
 <meta name="theme-color" content="#0F6E56"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -411,17 +411,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0F6E56;box-sh
               <div class="type-btn" id="type-esc" onclick="selectType('esc')">🏫 Escolar</div>
             </div>
           </div>
-          <div class="field">
-            <label>Como o paciente chegou hoje?</label>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-              <button type="button" class="mood-btn" id="mood-calm" onclick="selectMood('calmo')">😌 Calmo</button>
-              <button type="button" class="mood-btn" id="mood-happy" onclick="selectMood('animado')">😄 Animado</button>
-              <button type="button" class="mood-btn" id="mood-anxious" onclick="selectMood('ansioso')">😰 Ansioso</button>
-              <button type="button" class="mood-btn" id="mood-agitated" onclick="selectMood('agitado')">😤 Agitado</button>
-              <button type="button" class="mood-btn" id="mood-irritado" onclick="selectMood('irritado')">😠 Irritado</button>
-              <button type="button" class="mood-btn" id="mood-sad" onclick="selectMood('triste')">😢 Triste</button>
-            </div>
-          </div>
+          
           <div class="gps-box"><div class="gps-dot loading" id="gps-dot-in" style="display:none"></div><span id="gps-label-in" style="color:#888;font-size:12px;display:none">O GPS será capturado automaticamente ao fazer check-in</span></div>
           <button class="btn btn-primary btn-full" onclick="doCheckIn()" style="margin-top:.5rem">📍 Check-in</button>
         </div>
@@ -476,6 +466,17 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0F6E56;box-sh
             <div id="at-report-summary" style="background:#E8F5F1;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px;color:#085041"></div>
             <div class="field"><label style="font-weight:600;color:#0F6E56">📄 Relatório Família</label><textarea id="session-notes" placeholder="Descreva as atividades de forma acessível para a família..."></textarea></div>
             <div class="field"><label style="font-weight:600;color:#555">🔒 Relatório Interno</label><textarea id="session-notes-internal" placeholder="Observações clínicas e técnicas (uso interno)..."></textarea></div>
+<div class="field">
+            <label>Como o paciente chegou?</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+              <button type="button" class="mood-btn" id="mood-calm" onclick="selectMood('calmo')">😌 Calmo</button>
+              <button type="button" class="mood-btn" id="mood-happy" onclick="selectMood('animado')">😄 Animado</button>
+              <button type="button" class="mood-btn" id="mood-anxious" onclick="selectMood('ansioso')">😰 Ansioso</button>
+              <button type="button" class="mood-btn" id="mood-agitated" onclick="selectMood('agitado')">😤 Agitado</button>
+              <button type="button" class="mood-btn" id="mood-irritado" onclick="selectMood('irritado')">😠 Irritado</button>
+              <button type="button" class="mood-btn" id="mood-sad" onclick="selectMood('triste')">😢 Triste</button>
+            </div>
+          </div>
             <p style="font-size:12px;font-weight:600;color:#666;margin-bottom:10px;text-transform:uppercase">Avaliação da sessão</p>
             <div class="score-row"><span style="font-size:13px;color:#555">Comportamento</span><input type="range" min="1" max="5" value="3" id="sc-beh" oninput="document.getElementById('sv-beh').textContent=this.value"/><span id="sv-beh" style="font-size:13px;font-weight:600;color:#0F6E56">3</span></div>
             <div class="score-row"><span style="font-size:13px;color:#555">Comunicação</span><input type="range" min="1" max="5" value="3" id="sc-com" oninput="document.getElementById('sv-com').textContent=this.value"/><span id="sv-com" style="font-size:13px;font-weight:600;color:#0F6E56">3</span></div>
@@ -701,6 +702,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0F6E56;box-sh
           <input type="number" id="new-rate-esc" placeholder="70" value="70"/></div>
         </div>
       </div>
+          <div id="row-limit" style="display:none;margin-bottom:.75rem">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Limite diário de horas <span style="color:#aaa;font-weight:normal">(vazio = sem limite)</span></label>
+            <input type="number" id="new-daily-limit" placeholder="Ex: 5" min="1" max="24" style="max-width:120px"/>
+            <p style="font-size:11px;color:#888;margin-top:3px">Sessões que ultrapassarem esse limite não contam para faturamento.</p>
+          </div>
       <div id="row-sup-for" style="display:none;margin-bottom:.75rem">
         <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">ATs sob supervisao</label>
         <select id="new-supervisor-for" multiple style="min-height:80px;max-width:400px"></select>
@@ -1091,7 +1097,8 @@ async function finishCheckOut(notes, notesInternal) {
     if (!proceed) return;
   }
   const hoursReal = Math.max(0.01, Math.round((diffMs/60000))/60);
-  const hours = Math.min(hoursReal, 5); // Cap at 5h for billing
+  const atLimit = currentUser?.dailyHourLimit || null;
+  const hours = atLimit ? Math.min(hoursReal, atLimit) : hoursReal;
   setSyncing(true);
   await fbAdd('records', { patient:activeSession.patient, patientId:activeSession.patientId, atUsername:activeSession.atUsername, atName:activeSession.atName, checkInTime:activeSession.checkInTime, checkOutTime, gpsIn:activeSession.gpsIn, gpsOut, notes, notesInternal: notesInternal||'', hours, status:'pending', attendanceType:activeSession.attendanceType||'dom', mood:activeSession.mood||'', behaviorScore:parseInt(document.getElementById('sc-beh').value), communicationScore:parseInt(document.getElementById('sc-com').value), autonomyScore:parseInt(document.getElementById('sc-aut').value) });
   await fbDelete('active', currentUser.username);
@@ -1493,7 +1500,8 @@ function buildEvoPatients(){document.getElementById('evo-patient').innerHTML=pat
 window.renderEvoChart=function(){const patName=document.getElementById('evo-patient').value;const recs=allRecords.filter(r=>r.patient===patName&&r.behaviorScore).sort((a,b)=>new Date(a.checkInTime)-new Date(b.checkInTime));const empty=document.getElementById('evo-empty'),canvas=document.querySelector('#evo-chart');if(!recs.length){empty.style.display='';canvas.style.display='none';if(evoChart){evoChart.destroy();evoChart=null;}document.getElementById('evo-table').innerHTML='';return;}empty.style.display='none';canvas.style.display='';if(evoChart){evoChart.destroy();evoChart=null;}evoChart=new Chart(canvas.getContext('2d'),{type:'line',data:{labels:recs.map(r=>fmtDate(r.checkInTime)),datasets:[{label:'Comportamento',data:recs.map(r=>r.behaviorScore),borderColor:'#0F6E56',tension:.3,pointRadius:5,fill:false},{label:'Comunicação',data:recs.map(r=>r.communicationScore),borderColor:'#185FA5',tension:.3,pointRadius:5,fill:false},{label:'Autonomia',data:recs.map(r=>r.autonomyScore),borderColor:'#854F0B',tension:.3,pointRadius:5,fill:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:5,ticks:{stepSize:1},grid:{color:'rgba(128,128,128,.15)'}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:12}}}}}});document.getElementById('evo-table').innerHTML='<table class="rt"><thead><tr><th>Data</th><th>Tipo</th><th>Comport.</th><th>Comunic.</th><th>Autonomia</th><th>Relatório</th></tr></thead><tbody>'+recs.map(r=>'<tr><td>'+fmtDate(r.checkInTime)+'</td><td><span class="badge badge-'+(r.attendanceType==='esc'?'esc':'dom')+'" style="font-size:10px">'+(r.attendanceType==='esc'?'Escolar':'Dom.')+'</span></td><td>'+'★'.repeat(r.behaviorScore)+'☆'.repeat(5-r.behaviorScore)+'</td><td>'+'★'.repeat(r.communicationScore)+'☆'.repeat(5-r.communicationScore)+'</td><td>'+'★'.repeat(r.autonomyScore)+'☆'.repeat(5-r.autonomyScore)+'</td><td style="font-size:12px;color:#888">'+(r.notes||'—')+'</td></tr>').join('')+'</tbody></table>';};
 
 // ── Users ──
-window.toggleNewUserFields=function(){const r=document.getElementById('new-role').value;document.getElementById('row-rate').style.display=r==='at'?'':'none';document.getElementById('row-sup-for').style.display=r==='supervisor'?'':'none';const cr=document.getElementById('row-csup-for');if(cr)cr.style.display=r==='case_supervisor'?'':'none';if(r==='case_supervisor'){const sel=document.getElementById('new-csup-patients');if(sel&&!sel.options.length)sel.innerHTML=patients.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('');}};
+window.toggleNewUserFields=function(){const r=document.getElementById('new-role').value;document.getElementById('row-rate').style.display=r==='at'?'':'none';
+  const lmRow=document.getElementById('row-limit');if(lmRow)lmRow.style.display=r==='at'?'':'none';document.getElementById('row-sup-for').style.display=r==='supervisor'?'':'none';const cr=document.getElementById('row-csup-for');if(cr)cr.style.display=r==='case_supervisor'?'':'none';if(r==='case_supervisor'){const sel=document.getElementById('new-csup-patients');if(sel&&!sel.options.length)sel.innerHTML=patients.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('');}};
 window.addUser=async function(){
   const name=document.getElementById('new-name').value.trim();
   const username=document.getElementById('new-user').value.trim();
@@ -1512,7 +1520,8 @@ window.addUser=async function(){
   setSyncing(true);
   const csupPatientsEl=document.getElementById('new-csup-patients');
   const csupPatients=role==='case_supervisor'&&csupPatientsEl?[...csupPatientsEl.selectedOptions].map(o=>o.value).join(','):'';
-  const u={username,password,role,name,hourlyRate:rateDom,hourlyRateDom:rateDom,hourlyRateEsc:rateEsc,supervisorFor,csupPatients};
+  const dailyHourLimit=role==='at'?(parseFloat(document.getElementById('new-daily-limit')?.value)||null):null;
+  const u={username,password,role,name,hourlyRate:rateDom,hourlyRateDom:rateDom,hourlyRateEsc:rateEsc,supervisorFor,csupPatients,dailyHourLimit};
   await fbSet('users',username,u);users.push(u);setSyncing(false);renderUserList();
   ['new-name','new-user','new-pass'].forEach(id=>document.getElementById(id).value='');
   if(roleEl)roleEl.value='at';
@@ -1525,7 +1534,8 @@ window.saveUser=async function(username){
   const u=users.find(x=>x.username===username);if(!u)return;
   u.name=document.getElementById('ue-name-'+username).value.trim()||u.name;
   const np=document.getElementById('ue-pass-'+username).value;if(np)u.password=np;
-  if(u.role==='at'){const dv=parseFloat(document.getElementById('ue-rate-dom-'+username)?.value);const ev=parseFloat(document.getElementById('ue-rate-esc-'+username)?.value);if(!isNaN(dv))u.hourlyRateDom=dv;if(!isNaN(ev))u.hourlyRateEsc=ev;u.hourlyRate=u.hourlyRateDom||u.hourlyRateEsc||u.hourlyRate;}
+  if(u.role==='at'){const dv=parseFloat(document.getElementById('ue-rate-dom-'+username)?.value);const ev=parseFloat(document.getElementById('ue-rate-esc-'+username)?.value);if(!isNaN(dv))u.hourlyRateDom=dv;if(!isNaN(ev))u.hourlyRateEsc=ev;u.hourlyRate=u.hourlyRateDom||u.hourlyRateEsc||u.hourlyRate;
+    const lv=document.getElementById('ue-limit-'+username)?.value;u.dailyHourLimit=lv?parseFloat(lv):null;}
   if(u.role==='supervisor'){const sel=document.getElementById('ue-supfor-'+username);if(sel)u.supervisorFor=[...sel.selectedOptions].map(o=>o.value).join(',');}
   setSyncing(true);await fbSet('users',username,u);setSyncing(false);
   editingUserId=null;renderUserList();showMsg('clinic','Usuario atualizado!','success');
@@ -1535,7 +1545,7 @@ function renderUserList(){
   const atUsers=users.filter(u=>u.role==='at');
   const supSel=document.getElementById('new-supervisor-for');
   if(supSel)supSel.innerHTML=atUsers.map(u=>'<option value="'+u.username+'">'+u.name+'</option>').join('');
-  document.getElementById('user-list').innerHTML='<table class="rt" style="margin-bottom:0"><thead><tr><th>Nome</th><th>Usuario</th><th>Perfil</th><th>Info</th><th></th></tr></thead><tbody>'+users.map(u=>'<tr><td>'+u.name+'</td><td style="font-family:monospace;font-size:12px">'+u.username+'</td><td><span class="badge '+(u.role==='admin'?'badge-admin':u.role==='supervisor'?'badge-sup':'badge-at')+'">'+(u.role==='admin'?'admin':u.role==='supervisor'?'Supervisora Geral':u.role==='case_supervisor'?'Sup. de Casos':'AT')+'</span></td><td>'+(u.hourlyRate>0?'R$'+u.hourlyRate+'/h':'—')+'</td><td>'+(u.role!=='admin'?'<div style="display:flex;gap:4px"><button class="btn btn-edit btn-sm" onclick="editUser(\''+u.username+'\')">Editar</button><button class="btn btn-danger btn-sm" onclick="removeUser(\''+u.username+'\')">Remover</button></div>':'')+'</td></tr>'+(editingUserId===u.username?'<tr><td colspan="5"><div class="edit-form" id="uedit-'+u.username+'"><div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:flex-end"><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Nome</label><input type="text" id="ue-name-'+u.username+'" value="'+u.name+'"/></div><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Nova senha</label><input type="password" id="ue-pass-'+u.username+'" placeholder="deixe em branco para manter"/></div><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">R$/h Dom.</label><input type="number" id="ue-rate-dom-'+u.username+'" value="'+( u.hourlyRateDom||u.hourlyRate||0)+'" style="width:80px"/></div><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">R$/h Esc.</label><input type="number" id="ue-rate-esc-'+u.username+'" value="'+( u.hourlyRateEsc||0)+'" style="width:80px"/></div><div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveUser(\''+u.username+'\')">Salvar</button><button class="btn btn-sm" onclick="cancelEditUser()">Cancelar</button></div></div></div></td></tr>':'')  ).join('')+'</tbody></table>';}
+  document.getElementById('user-list').innerHTML='<table class="rt" style="margin-bottom:0"><thead><tr><th>Nome</th><th>Usuario</th><th>Perfil</th><th>Info</th><th></th></tr></thead><tbody>'+users.map(u=>'<tr><td>'+u.name+'</td><td style="font-family:monospace;font-size:12px">'+u.username+'</td><td><span class="badge '+(u.role==='admin'?'badge-admin':u.role==='supervisor'?'badge-sup':'badge-at')+'">'+(u.role==='admin'?'admin':u.role==='supervisor'?'Supervisora Geral':u.role==='case_supervisor'?'Sup. de Casos':'AT')+'</span></td><td>'+((u.hourlyRate>0?'R$'+u.hourlyRate+'/h':'—')+(u.dailyHourLimit?' ⏱'+u.dailyHourLimit+'h':''))+'</td><td>'+(u.role!=='admin'?'<div style="display:flex;gap:4px"><button class="btn btn-edit btn-sm" onclick="editUser(\''+u.username+'\')">Editar</button><button class="btn btn-danger btn-sm" onclick="removeUser(\''+u.username+'\')">Remover</button></div>':'')+'</td></tr>'+(editingUserId===u.username?'<tr><td colspan="5"><div class="edit-form" id="uedit-'+u.username+'"><div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:flex-end"><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Nome</label><input type="text" id="ue-name-'+u.username+'" value="'+u.name+'"/></div><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Nova senha</label><input type="password" id="ue-pass-'+u.username+'" placeholder="deixe em branco para manter"/></div><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">R$/h Dom.</label><input type="number" id="ue-rate-dom-'+u.username+'" value="'+( u.hourlyRateDom||u.hourlyRate||0)+'" style="width:80px"/></div><div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">R$/h Esc.</label><input type="number" id="ue-rate-esc-'+u.username+'" value="'+( u.hourlyRateEsc||0)+'" style="width:80px"/></div><div <div style="margin-bottom:8px"><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Limite diário (h) <span style="color:#aaa">(vazio = sem limite)</span></label><input type="number" id="ue-limit-'+u.username+'" value="'+(u.dailyHourLimit||'')+'" placeholder="Ex: 5" min="1" max="24" style="max-width:120px"/></div>'+'style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveUser(\''+u.username+'\')">Salvar</button><button class="btn btn-sm" onclick="cancelEditUser()">Cancelar</button></div></div></div></td></tr>':'')  ).join('')+'</tbody></table>';}
 
 // ── Utils ──
 function getThisWeek(){const now=new Date(),s=new Date(now);s.setDate(now.getDate()-now.getDay());s.setHours(0,0,0,0);return allRecords.filter(r=>new Date(r.checkInTime)>=s);}
@@ -2450,7 +2460,8 @@ window.doCheckOut = async function() {
   const diffMs = new Date(activeSession.checkOutTime) - new Date(activeSession.checkInTime);
   const totalMin = Math.round(diffMs/60000);
   const hoursReal = Math.max(0.01, totalMin/60);
-  const hours = Math.min(hoursReal, 5); // Cap at 5h for billing
+  const atLimit = currentUser?.dailyHourLimit || null;
+  const hours = atLimit ? Math.min(hoursReal, atLimit) : hoursReal; // Per-AT limit
   setSyncing(true);
   const draftData = {
     patient:activeSession.patient, patientId:activeSession.patientId,
@@ -2480,6 +2491,7 @@ window.doFinishReport = async function(draftId) {
   setSyncing(true);
   await fbUpdate('records', draftId, {
     notes, notesInternal, status:'pending',
+    mood: selectedMood || '',
     behaviorScore:parseInt(document.getElementById('sc-beh').value),
     communicationScore:parseInt(document.getElementById('sc-com').value),
     autonomyScore:parseInt(document.getElementById('sc-aut').value)
@@ -2489,6 +2501,8 @@ window.doFinishReport = async function(draftId) {
   document.getElementById('session-notes').value='';
   const ni=document.getElementById('session-notes-internal');if(ni)ni.value='';
   ['beh','com','aut'].forEach(k=>{const el=document.getElementById('sc-'+k);if(el)el.value=3;const sv=document.getElementById('sv-'+k);if(sv)sv.textContent=3;});
+  selectedMood='';
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
   const repCard=document.getElementById('at-report-card');if(repCard)repCard.style.display='none';
   setSyncing(false);
   showMsg('at','Relatório enviado para análise! ✅','success');
@@ -2533,6 +2547,10 @@ window.openPendingReport = function(draftId) {
   const notesEl=document.getElementById('session-notes');
   const notesIntEl=document.getElementById('session-notes-internal');
   if(summary){const totalMin=Math.round(r.hours*60);const hh=Math.floor(totalMin/60);const mm=totalMin%60;summary.innerHTML='<strong>'+r.patient+'</strong> · '+new Date(r.checkInTime).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' – '+new Date(r.checkOutTime).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' · <strong>'+String(hh).padStart(2,'0')+'h'+String(mm).padStart(2,'0')+'min</strong>';}
+  selectedMood=r.mood||'';
+  document.querySelectorAll('.mood-btn').forEach(b=>{
+    b.classList.toggle('selected', b.id==='mood-'+selectedMood);
+  });
   if(notesEl)notesEl.value=r.notes||'';
   if(notesIntEl)notesIntEl.value=r.notesInternal||'';
   ['beh','com','aut'].forEach(k=>{const score=k==='beh'?r.behaviorScore:k==='com'?r.communicationScore:r.autonomyScore;const el=document.getElementById('sc-'+k);if(el)el.value=score||3;const sv=document.getElementById('sv-'+k);if(sv)sv.textContent=score||3;});

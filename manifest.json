@@ -1,7 +1,7 @@
 {
-  "name": "Espaço Ninho — AT",
+  "name": "Espaço Ninho — Acompanhamento Terapêutico",
   "short_name": "Ninho AT",
-  "description": "Controle de Acompanhamento Terapêutico",
+  "description": "Sistema de Acompanhamento Terapêutico - Espaço Ninho",
   "start_url": "/ninho-at/",
   "scope": "/ninho-at/",
   "display": "standalone",
