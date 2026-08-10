@@ -1313,9 +1313,60 @@ window.applyMapFilter=function(){
 };
 function renderMapMarkers(){if(!mapObj)return;mapMarkers.forEach(m=>mapObj.removeLayer(m));mapMarkers=[];const sc={approved:'#1D9E75',pending:'#BA7517',rejected:'#993C1D'};mapFiltered.forEach(r=>{const li=parseFloat(r.gpsIn.lat),gi=parseFloat(r.gpsIn.lng),lo=parseFloat(r.gpsOut.lat),go=parseFloat(r.gpsOut.lng);const mI=L.circleMarker([li,gi],{radius:8,fillColor:'#1D9E75',color:'#fff',weight:2,fillOpacity:.95}).addTo(mapObj).bindPopup('<b>Check-in</b><br>'+r.atName+' · '+(r.attendanceType==='esc'?'Escolar':'Domiciliar')+'<br>'+r.patient+'<br>'+fmtTime(r.checkInTime));mI.on('click',()=>selectMapRec(r.id));const mO=L.circleMarker([lo,go],{radius:8,fillColor:'#185FA5',color:'#fff',weight:2,fillOpacity:.95}).addTo(mapObj).bindPopup('<b>Check-out</b><br>'+r.atName+'<br>'+r.patient+'<br>'+fmtTime(r.checkOutTime));mO.on('click',()=>selectMapRec(r.id));const ln=L.polyline([[li,gi],[lo,go]],{color:sc[r.status]||'#888',weight:2,dashArray:'4 4',opacity:.7}).addTo(mapObj);mapMarkers.push(mI,mO,ln);const pat=patients.find(p=>p.name===r.patient);if(pat){const mA=L.marker([pat.lat,pat.lng],{icon:L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#D85A30;border:2px solid #fff;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>',iconAnchor:[6,6]})}).addTo(mapObj).bindPopup('<b>Endereço</b><br>'+pat.name);mapMarkers.push(mA);}});if(mapFiltered.length){const b=L.latLngBounds(mapFiltered.flatMap(r=>[[parseFloat(r.gpsIn.lat),parseFloat(r.gpsIn.lng)],[parseFloat(r.gpsOut.lat),parseFloat(r.gpsOut.lng)]]));mapObj.fitBounds(b,{padding:[40,40]});}}
 window.selectMapRec=function(id){selectedMapId=id;const r=mapFiltered.find(x=>x.id==id);if(!r)return;const pat=patients.find(p=>p.name===r.patient);const dist=pat?calcDist(parseFloat(r.gpsIn.lat),parseFloat(r.gpsIn.lng),pat.lat,pat.lng):null;const dl=dist===null?'—':dist<1?Math.round(dist*1000)+'m':dist.toFixed(2)+'km';const dok=dist!==null&&dist<(maxRadiusMeters/1000);document.getElementById('map-selected-info').innerHTML='<div class="ib"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:14px;font-weight:500">'+r.atName+' → '+r.patient+'</span><div style="display:flex;gap:5px"><span class="badge badge-'+(r.attendanceType==='esc'?'esc':'dom')+'">'+(r.attendanceType==='esc'?'Escolar':'Domiciliar')+'</span><span class="badge badge-'+r.status+'">'+sL(r.status)+'</span></div></div><div class="ir"><span style="font-size:12px;color:#666">Check-in/out</span><span style="font-size:13px">'+fmtTime(r.checkInTime)+' → '+fmtTime(r.checkOutTime)+' · '+fmtHours(r.hours)+'</span></div><div class="ir"><span style="font-size:12px;color:#666">GPS entrada</span><span style="font-size:12px">'+r.gpsIn.lat+', '+r.gpsIn.lng+'</span></div><div class="ir"><span style="font-size:12px;color:#666">Distância do endereço</span><span style="font-size:13px;font-weight:500;color:'+(dok?'#1D9E75':'#993C1D')+'">'+dl+' '+(dok?'✓':'⚠ fora do local')+'</span></div></div>';mapObj.setView([parseFloat(r.gpsIn.lat),parseFloat(r.gpsIn.lng)],16);renderMapList();};
-function renderMapList(){const el=document.getElementById('map-record-list');document.getElementById('map-record-count').textContent='('+mapFiltered.length+')';if(!mapFiltered.length){el.innerHTML='<div class="empty">Nenhum registro com GPS.</div>';return;}el.innerHTML=mapFiltered.map(r=>{const pat=patients.find(p=>p.name===r.patient);const dist=pat?calcDist(parseFloat(r.gpsIn.lat),parseFloat(r.gpsIn.lng),pat.lat,pat.lng):null;const dl=dist===null?'':dist<1?Math.round(dist*1000)+'m':dist.toFixed(2)+'km';const dok=dist!==null&&dist<(maxRadiusMeters/1000);return'<div class="mri'+(selectedMapId==r.id?' sel':'')+'" onclick="selectMapRec(\''+r.id+'\')"><div class="dp"><div class="dci"></div><div class="dln"></div><div class="dco"></div></div><div style="flex:1"><div style="font-size:13px;font-weight:500">'+r.atName+' <span style="font-weight:400;color:#888">→ '+r.patient+'</span></div><div style="font-size:12px;color:#888">'+fmtDate(r.checkInTime)+' · '+fmtHours(r.hours)+(dist!==null?' · <span style="color:'+(dok?'#1D9E75':'#993C1D')+'">'+dl+' do endereço</span>':'')+'</div></div><div style="display:flex;gap:4px;flex-direction:column;align-items:flex-end"><span class="badge badge-'+(r.attendanceType==='esc'?'esc':'dom')+'">'+(r.attendanceType==='esc'?'Escolar':'Dom.')+'</span><span class="badge badge-'+r.status+'">'+sL(r.status)+'</span></div></div>';}).join('');}
+function renderMapList(){
+  const el=document.getElementById('map-record-list');
+  document.getElementById('map-record-count').textContent='('+mapFiltered.length+')';
+  if(!mapFiltered.length){el.innerHTML='<div class="empty">Nenhum registro com GPS.</div>';return;}
+  window._clinicMapData=mapFiltered;
+  el.innerHTML=mapFiltered.map((r,i)=>{
+    const hasGps=r.gpsIn&&r.gpsIn.lat&&r.gpsOut&&r.gpsOut.lat;
+    return `<div class="rec-card" style="margin-bottom:.5rem;cursor:pointer" data-cmc="${i}">
+      <div class="rec-card-header">
+        <div>
+          <div class="rec-card-patient">${r.patient}</div>
+          <div style="font-size:12px;color:#888">${r.atName} · ${fmtDate(r.checkInTime)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge badge-${r.attendanceType==='esc'?'esc':'dom'}" style="font-size:10px">${r.attendanceType==='esc'?'Escolar':'Dom.'}</span>
+          <span class="badge badge-${r.status}" style="font-size:10px">${sL(r.status)}</span>
+          <span style="font-size:18px;color:#aaa;transition:transform .2s" id="cmc-arrow-${i}">›</span>
+        </div>
+      </div>
+      <div class="rec-card-meta"><span>${fmtTime(r.checkInTime)} → ${fmtTime(r.checkOutTime)}</span><span>${fmtHours(r.hours)}</span></div>
+      ${hasGps?`<div id="cmc-${i}" style="display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0f0f0">
+        <div style="margin-bottom:.75rem">
+          <div style="font-size:11px;font-weight:600;color:#1D9E75;text-transform:uppercase;margin-bottom:4px">📍 Check-in</div>
+          <div style="font-size:13px;color:#444;margin-bottom:3px" id="caddr-in-${i}">🔄 Buscando endereço...</div>
+          <div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: ${r.gpsIn.lat}, ${r.gpsIn.lng}</div>
+          <a href="https://maps.google.com/?q=${r.gpsIn.lat},${r.gpsIn.lng}" target="_blank" style="font-size:12px;color:#185FA5">🗺️ Ver no Google Maps</a>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;margin-bottom:4px">📍 Check-out</div>
+          <div style="font-size:13px;color:#444;margin-bottom:3px" id="caddr-out-${i}">🔄 Buscando endereço...</div>
+          <div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: ${r.gpsOut.lat}, ${r.gpsOut.lng}</div>
+          <a href="https://maps.google.com/?q=${r.gpsOut.lat},${r.gpsOut.lng}" target="_blank" style="font-size:12px;color:#185FA5">🗺️ Ver no Google Maps</a>
+        </div>
+      </div>`:'<div style="padding:.5rem 0;font-size:12px;color:#aaa">GPS não disponível</div>'}
+    </div>`;
+  }).join('');
+  el.onclick=function(e){
+    const card=e.target.closest('[data-cmc]');
+    if(!card)return;
+    const i=parseInt(card.dataset.cmc);
+    const detail=document.getElementById('cmc-'+i);
+    const arrow=document.getElementById('cmc-arrow-'+i);
+    if(!detail)return;
+    const open=detail.style.display!=='none';
+    detail.style.display=open?'none':'';
+    if(arrow)arrow.style.transform=open?'':'rotate(90deg)';
+    if(!open&&window._clinicMapData&&window._clinicMapData[i]){
+      const r=window._clinicMapData[i];
+      if(r.gpsIn)fetchAddress(r.gpsIn.lat,r.gpsIn.lng,'caddr-in-'+i);
+      if(r.gpsOut)fetchAddress(r.gpsOut.lat,r.gpsOut.lng,'caddr-out-'+i);
+    }
+  };
+}
 
-// ── Patients ──
 function renderPatientATSelect(){const ats=users.filter(u=>u.role==='at');document.getElementById('p-at').innerHTML=ats.map(u=>'<option value="'+u.username+'">'+u.name+'</option>').join('');}
 window.addPatient=async function(){
   const name=document.getElementById('p-name').value.trim();
