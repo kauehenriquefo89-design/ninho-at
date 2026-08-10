@@ -2077,10 +2077,14 @@ window.applySupMapFilter=function(){
   const at=document.getElementById('smf-at')?.value||'';
   const pt=document.getElementById('smf-pt')?.value||'';
   const tp=document.getElementById('smf-type')?.value||'';
+  const dateFrom=document.getElementById('smf-date-from')?.value||'';
+  const dateTo=document.getElementById('smf-date-to')?.value||'';
   supMapFiltered=getMyRecords().filter(r=>r.gpsIn&&r.gpsOut).filter(r=>{
     if(at&&r.atName!==at)return false;
     if(pt&&r.patient!==pt)return false;
     if(tp&&r.attendanceType!==tp)return false;
+    if(dateFrom){const d=new Date(r.checkInTime).toISOString().slice(0,10);if(d<dateFrom)return false;}
+    if(dateTo){const d=new Date(r.checkInTime).toISOString().slice(0,10);if(d>dateTo)return false;}
     return true;
   });
   renderSupMapMarkers(supMapFiltered);
@@ -2429,7 +2433,82 @@ let csupEvoChart=null;
 function buildCSupEvoPatients(){const myPats=getCSupPatients().map(p=>p.name);const pats=[...new Set(allRecords.filter(r=>myPats.includes(r.patient)&&r.behaviorScore).map(r=>r.patient))];const sel=document.getElementById('csup-evo-patient');if(sel)sel.innerHTML=pats.map(p=>'<option>'+p+'</option>').join('');}
 window.renderCSupEvoChart=function(){const patName=document.getElementById('csup-evo-patient')?.value;if(!patName)return;const myPats=getCSupPatients().map(p=>p.name);const recs=allRecords.filter(r=>r.patient===patName&&myPats.includes(r.patient)&&r.behaviorScore).sort((a,b)=>new Date(a.checkInTime)-new Date(b.checkInTime));const empty=document.getElementById('csup-evo-empty'),canvas=document.querySelector('#csup-evo-chart');if(!recs.length){if(empty)empty.style.display='';if(canvas)canvas.style.display='none';if(csupEvoChart){csupEvoChart.destroy();csupEvoChart=null;}const tbl=document.getElementById('csup-evo-table');if(tbl)tbl.innerHTML='';return;}if(empty)empty.style.display='none';if(canvas)canvas.style.display='';if(csupEvoChart){csupEvoChart.destroy();csupEvoChart=null;}csupEvoChart=new Chart(canvas.getContext('2d'),{type:'line',data:{labels:recs.map(r=>fmtDate(r.checkInTime)),datasets:[{label:'Comportamento',data:recs.map(r=>r.behaviorScore),borderColor:'#0F6E56',tension:.3,pointRadius:5,fill:false},{label:'Comunicacao',data:recs.map(r=>r.communicationScore),borderColor:'#185FA5',tension:.3,pointRadius:5,fill:false},{label:'Autonomia',data:recs.map(r=>r.autonomyScore),borderColor:'#854F0B',tension:.3,pointRadius:5,fill:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:5,ticks:{stepSize:1}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom'}}}});const tbl=document.getElementById('csup-evo-table');if(tbl)tbl.innerHTML='<table class="rt"><thead><tr><th>Data</th><th>Tipo</th><th>Comport.</th><th>Comunic.</th><th>Autonomia</th><th>Relatório</th></tr></thead><tbody>'+recs.map(r=>'<tr><td>'+fmtDate(r.checkInTime)+'</td><td>'+(r.attendanceType==='esc'?'Escolar':'Dom.')+'</td><td>'+'★'.repeat(r.behaviorScore)+'☆'.repeat(5-r.behaviorScore)+'</td><td>'+'★'.repeat(r.communicationScore)+'☆'.repeat(5-r.communicationScore)+'</td><td>'+'★'.repeat(r.autonomyScore)+'☆'.repeat(5-r.autonomyScore)+'</td><td style="font-size:12px;color:#444">'+(r.notes||'—')+'</td></tr>').join('')+'</tbody></table>';};
 
-function renderSupMapList(){const el=document.getElementById('sup-map-list');if(!el)return;if(!supMapFiltered.length){el.innerHTML='<div class="empty" style="padding:1rem">Nenhum atendimento.</div>';return;}el.innerHTML=supMapFiltered.map(r=>{const at=users.find(u=>u.username===r.atUsername);return'<div class="rec-card" style="margin-bottom:.5rem"><div class="rec-card-header"><div><div class="rec-card-patient">'+r.patient+'</div><div style="font-size:12px;color:#888">'+(at?at.name:r.atUsername)+'</div></div><span class="badge badge-'+r.status+'">'+sL(r.status)+'</span></div><div class="rec-card-meta"><span>'+fmtDate(r.checkInTime)+'</span><span>'+fmtHours(r.hours)+'</span></div></div>';}).join('');}
+function renderSupMapList(){
+  const el=document.getElementById('sup-map-list');
+  if(!el)return;
+  if(!supMapFiltered.length){el.innerHTML='<div class="empty" style="padding:1rem">Nenhum atendimento.</div>';return;}
+  el.innerHTML=supMapFiltered.map((r,i)=>{
+    const at=users.find(u=>u.username===r.atUsername);
+    const hasGps=r.gpsIn&&r.gpsIn.lat&&r.gpsOut&&r.gpsOut.lat;
+    return'<div class="rec-card" style="margin-bottom:.5rem;cursor:pointer" onclick="toggleMapCard(\'mc-'+i+'\')">'
+      +'<div class="rec-card-header">'
+      +'<div><div class="rec-card-patient">'+r.patient+'</div>'
+      +'<div style="font-size:12px;color:#888">'+(at?at.name:r.atUsername)+' · '+fmtDate(r.checkInTime)+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<span class="badge badge-'+(r.attendanceType==='esc'?'esc':'dom')+'" style="font-size:10px">'+(r.attendanceType==='esc'?'Escolar':'Dom.')+'</span>'
+      +'<span style="font-size:18px;color:#aaa;transition:transform .2s" id="mc-arrow-'+i+'">›</span>'
+      +'</div></div>'
+      +'<div class="rec-card-meta"><span>'+fmtHours(r.hours)+'</span><span>'+sL(r.status)+'</span></div>'
+      +(hasGps?
+        '<div id="mc-'+i+'" style="display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0f0f0">'
+        +'<div style="margin-bottom:.6rem">'
+        +'<div style="font-size:11px;font-weight:600;color:#1D9E75;text-transform:uppercase;margin-bottom:3px">📍 Check-in</div>'
+        +'<div style="font-size:12px;color:#444;margin-bottom:4px" id="addr-in-'+i+'">🔄 Carregando endereço...</div>'
+        +'<div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: '+r.gpsIn.lat+', '+r.gpsIn.lng+'</div>'
+        +'<a href="https://maps.google.com/?q='+r.gpsIn.lat+','+r.gpsIn.lng+'" target="_blank" style="font-size:12px;color:#185FA5;text-decoration:none">🗺️ Ver no Google Maps</a>'
+        +'</div>'
+        +'<div>'
+        +'<div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;margin-bottom:3px">📍 Check-out</div>'
+        +'<div style="font-size:12px;color:#444;margin-bottom:4px" id="addr-out-'+i+'">🔄 Carregando endereço...</div>'
+        +'<div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: '+r.gpsOut.lat+', '+r.gpsOut.lng+'</div>'
+        +'<a href="https://maps.google.com/?q='+r.gpsOut.lat+','+r.gpsOut.lng+'" target="_blank" style="font-size:12px;color:#185FA5;text-decoration:none">🗺️ Ver no Google Maps</a>'
+        +'</div>'
+        +'</div>'
+        :'<div style="padding:.5rem 0;font-size:12px;color:#aaa">GPS não disponível</div>')
+      +'</div>';
+  }).join('');
+  // Store GPS data for lazy loading
+  window._mapListData = supMapFiltered;
+}
+
+window.toggleMapCard = function(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const idx = id.replace('mc-','');
+  const arrow = document.getElementById('mc-arrow-'+idx);
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : '';
+  if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+  // Fetch addresses when opening
+  if(!isOpen && window._mapListData && window._mapListData[idx]) {
+    const r = window._mapListData[idx];
+    if(r.gpsIn) fetchAddress(r.gpsIn.lat, r.gpsIn.lng, 'addr-in-'+idx);
+    if(r.gpsOut) fetchAddress(r.gpsOut.lat, r.gpsOut.lng, 'addr-out-'+idx);
+  }
+};
+
+async function fetchAddress(lat, lng, elId) {
+  const el = document.getElementById(elId);
+  if(!el || el.dataset.loaded) return;
+  try {
+    const res = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=pt-BR', {headers:{'User-Agent':'NinhoAT/1.0'}});
+    const data = await res.json();
+    const addr = data.display_name || (lat+', '+lng);
+    // Show only street + neighborhood + city
+    const parts = [];
+    if(data.address) {
+      if(data.address.road) parts.push(data.address.road+(data.address.house_number?' '+data.address.house_number:''));
+      if(data.address.suburb||data.address.neighbourhood) parts.push(data.address.suburb||data.address.neighbourhood);
+      if(data.address.city||data.address.town) parts.push(data.address.city||data.address.town);
+    }
+    el.textContent = parts.length ? parts.join(', ') : addr.split(',').slice(0,3).join(',');
+    el.dataset.loaded = '1';
+  } catch(e) {
+    el.textContent = lat+', '+lng;
+    el.dataset.loaded = '1';
+  }
+}
+
 
 window.installPWA=function(){if(window.deferredPrompt){window.deferredPrompt.prompt();}};
 
@@ -2632,6 +2711,8 @@ boot();
             <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">AT</label><select id="smf-at" onchange="supMapATChanged()"><option value="">Todas</option></select></div>
             <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Paciente</label><select id="smf-pt" onchange="applySupMapFilter()"><option value="">Todos</option></select></div>
             <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Tipo</label><select id="smf-type" onchange="applySupMapFilter()"><option value="">Todos</option><option value="dom">Domiciliar</option><option value="esc">Escolar</option></select></div>
+            <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Data início</label><input type="date" id="smf-date-from" onchange="applySupMapFilter()" style="max-width:150px"/></div>
+            <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Data fim</label><input type="date" id="smf-date-to" onchange="applySupMapFilter()" style="max-width:150px"/></div>
           </div>
           <div class="legend">
             <div class="li"><div class="ld" style="background:#1D9E75"></div>Check-in</div>
