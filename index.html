@@ -2437,76 +2437,76 @@ function renderSupMapList(){
   const el=document.getElementById('sup-map-list');
   if(!el)return;
   if(!supMapFiltered.length){el.innerHTML='<div class="empty" style="padding:1rem">Nenhum atendimento.</div>';return;}
+  window._mapListData=supMapFiltered;
   el.innerHTML=supMapFiltered.map((r,i)=>{
     const at=users.find(u=>u.username===r.atUsername);
     const hasGps=r.gpsIn&&r.gpsIn.lat&&r.gpsOut&&r.gpsOut.lat;
-    return'<div class="rec-card" style="margin-bottom:.5rem;cursor:pointer" onclick="toggleMapCard(\'mc-'+i+'\')">'
-      +'<div class="rec-card-header">'
-      +'<div><div class="rec-card-patient">'+r.patient+'</div>'
-      +'<div style="font-size:12px;color:#888">'+(at?at.name:r.atUsername)+' · '+fmtDate(r.checkInTime)+'</div></div>'
-      +'<div style="display:flex;align-items:center;gap:6px">'
-      +'<span class="badge badge-'+(r.attendanceType==='esc'?'esc':'dom')+'" style="font-size:10px">'+(r.attendanceType==='esc'?'Escolar':'Dom.')+'</span>'
-      +'<span style="font-size:18px;color:#aaa;transition:transform .2s" id="mc-arrow-'+i+'">›</span>'
-      +'</div></div>'
-      +'<div class="rec-card-meta"><span>'+fmtHours(r.hours)+'</span><span>'+sL(r.status)+'</span></div>'
-      +(hasGps?
-        '<div id="mc-'+i+'" style="display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0f0f0">'
-        +'<div style="margin-bottom:.6rem">'
-        +'<div style="font-size:11px;font-weight:600;color:#1D9E75;text-transform:uppercase;margin-bottom:3px">📍 Check-in</div>'
-        +'<div style="font-size:12px;color:#444;margin-bottom:4px" id="addr-in-'+i+'">🔄 Carregando endereço...</div>'
-        +'<div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: '+r.gpsIn.lat+', '+r.gpsIn.lng+'</div>'
-        +'<a href="https://maps.google.com/?q='+r.gpsIn.lat+','+r.gpsIn.lng+'" target="_blank" style="font-size:12px;color:#185FA5;text-decoration:none">🗺️ Ver no Google Maps</a>'
-        +'</div>'
-        +'<div>'
-        +'<div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;margin-bottom:3px">📍 Check-out</div>'
-        +'<div style="font-size:12px;color:#444;margin-bottom:4px" id="addr-out-'+i+'">🔄 Carregando endereço...</div>'
-        +'<div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: '+r.gpsOut.lat+', '+r.gpsOut.lng+'</div>'
-        +'<a href="https://maps.google.com/?q='+r.gpsOut.lat+','+r.gpsOut.lng+'" target="_blank" style="font-size:12px;color:#185FA5;text-decoration:none">🗺️ Ver no Google Maps</a>'
-        +'</div>'
-        +'</div>'
-        :'<div style="padding:.5rem 0;font-size:12px;color:#aaa">GPS não disponível</div>')
-      +'</div>';
+    const typeBadge=r.attendanceType==='esc'?'Escolar':'Dom.';
+    const typeClass=r.attendanceType==='esc'?'esc':'dom';
+    return `<div class="rec-card" style="margin-bottom:.5rem;cursor:pointer" data-mc="${i}">
+      <div class="rec-card-header">
+        <div>
+          <div class="rec-card-patient">${r.patient}</div>
+          <div style="font-size:12px;color:#888">${at?at.name:r.atUsername} · ${fmtDate(r.checkInTime)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge badge-${typeClass}" style="font-size:10px">${typeBadge}</span>
+          <span style="font-size:18px;color:#aaa;transition:transform .2s" id="mc-arrow-${i}">›</span>
+        </div>
+      </div>
+      <div class="rec-card-meta"><span>${fmtHours(r.hours)}</span><span>${sL(r.status)}</span></div>
+      ${hasGps?`<div id="mc-${i}" style="display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0f0f0">
+        <div style="margin-bottom:.75rem">
+          <div style="font-size:11px;font-weight:600;color:#1D9E75;text-transform:uppercase;margin-bottom:4px">📍 Check-in</div>
+          <div style="font-size:13px;color:#444;margin-bottom:3px" id="addr-in-${i}">🔄 Buscando endereço...</div>
+          <div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: ${r.gpsIn.lat}, ${r.gpsIn.lng}</div>
+          <a href="https://maps.google.com/?q=${r.gpsIn.lat},${r.gpsIn.lng}" target="_blank" style="font-size:12px;color:#185FA5">🗺️ Ver no Google Maps</a>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;margin-bottom:4px">📍 Check-out</div>
+          <div style="font-size:13px;color:#444;margin-bottom:3px" id="addr-out-${i}">🔄 Buscando endereço...</div>
+          <div style="font-size:11px;color:#aaa;margin-bottom:4px">GPS: ${r.gpsOut.lat}, ${r.gpsOut.lng}</div>
+          <a href="https://maps.google.com/?q=${r.gpsOut.lat},${r.gpsOut.lng}" target="_blank" style="font-size:12px;color:#185FA5">🗺️ Ver no Google Maps</a>
+        </div>
+      </div>`:'<div style="padding:.5rem 0;font-size:12px;color:#aaa">GPS não disponível</div>'}
+    </div>`;
   }).join('');
-  // Store GPS data for lazy loading
-  window._mapListData = supMapFiltered;
+  // Attach click handlers via event delegation
+  el.onclick=function(e){
+    const card=e.target.closest('[data-mc]');
+    if(!card)return;
+    window.toggleMapCard('mc-'+card.dataset.mc, parseInt(card.dataset.mc));
+  };
 }
 
-window.toggleMapCard = function(id) {
-  const el = document.getElementById(id);
-  if(!el) return;
-  const idx = id.replace('mc-','');
-  const arrow = document.getElementById('mc-arrow-'+idx);
-  const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : '';
-  if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
-  // Fetch addresses when opening
-  if(!isOpen && window._mapListData && window._mapListData[idx]) {
-    const r = window._mapListData[idx];
-    if(r.gpsIn) fetchAddress(r.gpsIn.lat, r.gpsIn.lng, 'addr-in-'+idx);
-    if(r.gpsOut) fetchAddress(r.gpsOut.lat, r.gpsOut.lng, 'addr-out-'+idx);
+window.toggleMapCard=function(id,idx){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const arrow=document.getElementById('mc-arrow-'+idx);
+  const isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'';
+  if(arrow)arrow.style.transform=isOpen?'':'rotate(90deg)';
+  if(!isOpen&&window._mapListData&&window._mapListData[idx]){
+    const r=window._mapListData[idx];
+    if(r.gpsIn)fetchAddress(r.gpsIn.lat,r.gpsIn.lng,'addr-in-'+idx);
+    if(r.gpsOut)fetchAddress(r.gpsOut.lat,r.gpsOut.lng,'addr-out-'+idx);
   }
 };
 
-async function fetchAddress(lat, lng, elId) {
-  const el = document.getElementById(elId);
-  if(!el || el.dataset.loaded) return;
-  try {
-    const res = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=pt-BR', {headers:{'User-Agent':'NinhoAT/1.0'}});
-    const data = await res.json();
-    const addr = data.display_name || (lat+', '+lng);
-    // Show only street + neighborhood + city
-    const parts = [];
-    if(data.address) {
-      if(data.address.road) parts.push(data.address.road+(data.address.house_number?' '+data.address.house_number:''));
-      if(data.address.suburb||data.address.neighbourhood) parts.push(data.address.suburb||data.address.neighbourhood);
-      if(data.address.city||data.address.town) parts.push(data.address.city||data.address.town);
-    }
-    el.textContent = parts.length ? parts.join(', ') : addr.split(',').slice(0,3).join(',');
-    el.dataset.loaded = '1';
-  } catch(e) {
-    el.textContent = lat+', '+lng;
-    el.dataset.loaded = '1';
-  }
+async function fetchAddress(lat,lng,elId){
+  const el=document.getElementById(elId);
+  if(!el||el.dataset.loaded)return;
+  try{
+    const res=await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=pt-BR',{headers:{'User-Agent':'NinhoAT/1.0'}});
+    const data=await res.json();
+    const a=data.address||{};
+    const parts=[];
+    if(a.road)parts.push(a.road+(a.house_number?' '+a.house_number:''));
+    if(a.suburb||a.neighbourhood)parts.push(a.suburb||a.neighbourhood);
+    if(a.city||a.town||a.village)parts.push(a.city||a.town||a.village);
+    el.textContent=parts.length?parts.join(', '):(data.display_name||lat+', '+lng).split(',').slice(0,3).join(',');
+    el.dataset.loaded='1';
+  }catch(e){el.textContent=lat+', '+lng;el.dataset.loaded='1';}
 }
 
 
@@ -2707,7 +2707,7 @@ boot();
       <div id="sup-tab-map" class="pg-section" style="display:none">
         <div class="saas-card" style="margin-bottom:1rem">
           <div class="saas-card-title">Filtros</div>
-          <div class="fr">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1rem">
             <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">AT</label><select id="smf-at" onchange="supMapATChanged()"><option value="">Todas</option></select></div>
             <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Paciente</label><select id="smf-pt" onchange="applySupMapFilter()"><option value="">Todos</option></select></div>
             <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Tipo</label><select id="smf-type" onchange="applySupMapFilter()"><option value="">Todos</option><option value="dom">Domiciliar</option><option value="esc">Escolar</option></select></div>
