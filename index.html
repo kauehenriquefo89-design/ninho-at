@@ -583,10 +583,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0F6E56;box-sh
   <div id="clinic-tab-map" class="pg-section">
     <div class="saas-card">
       <div class="saas-card-title">Filtros</div>
-      <div class="fr">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1rem">
         <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">AT</label><select id="mf-at" onchange="mapATChanged()"><option value="">Todas</option></select></div>
         <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Paciente</label><select id="mf-pt" onchange="applyMapFilter()"><option value="">Todos</option></select></div>
         <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Tipo</label><select id="mf-type" onchange="applyMapFilter()"><option value="">Todos</option><option value="dom">Domiciliar</option><option value="esc">Escolar</option></select></div>
+        <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Data início</label><input type="date" id="mf-date-from" onchange="applyMapFilter()" style="max-width:150px"/></div>
+        <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Data fim</label><input type="date" id="mf-date-to" onchange="applyMapFilter()" style="max-width:150px"/></div>
       </div>
       <div class="legend">
         <div class="li"><div class="ld" style="background:#1D9E75"></div>Check-in</div>
@@ -1297,10 +1299,14 @@ window.applyMapFilter=function(){
     const allPats=[...new Set(allRecords.filter(r=>r.gpsIn&&r.gpsOut).map(r=>r.patient))];
     mfPt.innerHTML='<option value="">Todos</option>'+allPats.map(p=>'<option value="'+p+'">'+p+'</option>').join('');
   }
+  const dfrom=document.getElementById('mf-date-from')?.value||'';
+  const dto=document.getElementById('mf-date-to')?.value||'';
   mapFiltered=allRecords.filter(r=>r.gpsIn&&r.gpsOut).filter(r=>{
     if(at&&r.atName!==at)return false;
     if(pt&&r.patient!==pt)return false;
     if(tp&&r.attendanceType!==tp)return false;
+    if(dfrom){const d=new Date(r.checkInTime).toISOString().slice(0,10);if(d<dfrom)return false;}
+    if(dto){const d=new Date(r.checkInTime).toISOString().slice(0,10);if(d>dto)return false;}
     return true;
   });
   renderMapMarkers();
@@ -2693,8 +2699,6 @@ window.openPendingReport = function(draftId) {
 boot();
 </script>
 
-<!-- SUPERVISOR -->
-    </div><!-- saas-content -->
   </div><!-- saas-main -->
 </div><!-- saas-wrap -->
 </div><!-- screen-clinic -->
