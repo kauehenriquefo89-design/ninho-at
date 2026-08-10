@@ -1256,7 +1256,7 @@ function initMapTab() {
   const patNames=[...new Set(allRecords.filter(r=>r.gpsIn).map(r=>r.patient))];
   document.getElementById('mf-at').innerHTML='<option value="">Todas</option>'+atNames.map(n=>'<option>'+n+'</option>').join('');
   document.getElementById('mf-pt').innerHTML='<option value="">Todos</option>'+patNames.map(p=>'<option>'+p+'</option>').join('');
-  mapFiltered=allRecords.filter(r=>r.gpsIn&&r.gpsOut);
+  applyMapFilter();
   if(!mapObj){
     setTimeout(()=>{
       mapObj=L.map('map').setView([-23.5505,-46.6333],12);
